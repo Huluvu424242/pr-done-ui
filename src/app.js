@@ -28,6 +28,10 @@ const elements = {
   orbitIdentityLabel: $('#orbitIdentityLabel'),
   writeAccessLabel: $('#writeAccessLabel'),
   dbAddressLabel: $('#dbAddressLabel'),
+  debugPeerIdLabel: $('#debugPeerIdLabel'),
+  debugOrbitIdentityLabel: $('#debugOrbitIdentityLabel'),
+  debugWriteAccessLabel: $('#debugWriteAccessLabel'),
+  debugDbAddressLabel: $('#debugDbAddressLabel'),
   actionFeedback: $('#actionFeedback'),
   totalEventsStat: $('#totalEventsStat'),
   topReviewerStat: $('#topReviewerStat'),
@@ -98,11 +102,20 @@ function renderConfig(config) {
 }
 
 function renderDiagnostics(info) {
-  elements.peerIdLabel.textContent = info.peerId || 'unbekannt';
-  elements.orbitIdentityLabel.textContent = info.identityId || 'unbekannt';
-  elements.dbAddressLabel.textContent = info.dbAddress || 'unbekannt';
+  const peerId = info.peerId || 'unbekannt';
+  const identityId = info.identityId || 'unbekannt';
+  const dbAddress = info.dbAddress || 'unbekannt';
   const writeAccess = Array.isArray(info.writeAccess) ? info.writeAccess.join(', ') : String(info.writeAccess || 'unbekannt');
-  elements.writeAccessLabel.textContent = writeAccess;
+
+  if (elements.peerIdLabel) elements.peerIdLabel.textContent = peerId;
+  if (elements.orbitIdentityLabel) elements.orbitIdentityLabel.textContent = identityId;
+  if (elements.dbAddressLabel) elements.dbAddressLabel.textContent = dbAddress;
+  if (elements.writeAccessLabel) elements.writeAccessLabel.textContent = writeAccess;
+
+  if (elements.debugPeerIdLabel) elements.debugPeerIdLabel.textContent = peerId;
+  if (elements.debugOrbitIdentityLabel) elements.debugOrbitIdentityLabel.textContent = identityId;
+  if (elements.debugDbAddressLabel) elements.debugDbAddressLabel.textContent = dbAddress;
+  if (elements.debugWriteAccessLabel) elements.debugWriteAccessLabel.textContent = writeAccess;
 }
 
 function aggregateByDay(events) {
