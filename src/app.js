@@ -1,13 +1,10 @@
+import './orbitdb.js';
+
 const STORAGE_KEY = 'pr-done-orbitdb-config-v1';
 
 const state = {
   config: null,
-  ipfs: null,
-  orbitdb: null,
-  db: null,
-  events: [],
-  pendingDbAddress: '',
-  pendingDbName: ''
+  events: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -220,153 +217,9 @@ function renderAll(events) {
 }
 
 async function loadDbEvents() {
-  if (!state.db) return;
-  const rows = await state.db.all();
-
-  state.events = rows
-    .map((entry) => ({
-      hash: entry.hash,
-      ...(entry.value || {})
-    }))
-    .filter((value) => value && value.type === 'pr_done');
-
-  renderAll(state.events);
-}
-
-async function addPrDoneEvent() {
-  const payload = {
-    type: 'pr_done',
-    teamName: state.config.teamName,
-    userShortcode: state.config.userShortcode,
-    timestamp: new Date().toISOString(),
-    dayKey: getTodayKey()
-  };
-
-  const hash = await state.db.add(payload);
-  setFeedback(`Event geschrieben: ${hash}`);
-  await loadDbEvents();
-}
-
-async function ensureOrbitRuntime() {
-  if (state.ipfs && state.orbitdb) {
-    return;
-  }
-
-  const { createHelia, libp2pDefaults } = window.Helia;
-  const { createOrbitDB } = window.OrbitDB;
-  const { gossipsub } = window.ChainsafeLibp2PGossipsub;
-
-  const libp2pOptions = libp2pDefaults();
-  libp2pOptions.services.pubsub = gossipsub({ allowPublishToZeroTopicPeers: true });
-
-  state.ipfs = await createHelia({ libp2p: libp2pOptions });
-  state.orbitdb = await createOrbitDB({ ipfs: state.ipfs });
-}
-
-async function openEventsDb(target) {
-  const db = await state.orbitdb.open(target, {
-    type: 'events',
-    syncAutomatically: true,
-    accessController: {
-      write: ['*']
-    }
-  });
-
-  return db;
-}
-
-function attachDbUpdateListener(db) {
-  db.events.on('update', async () => {
-    await loadDbEvents();
-  });
-}
-
-async function createInitialDbAddress() {
-  const teamName = elements.teamName.value.trim();
-
-  if (!teamName) {
-    setFeedback('Bitte zuerst einen Teamnamen eintragen, damit eine passende OrbitDB erzeugt werden kann.', true);
-    elements.teamName.focus();
-    return;
-  }
-
-  elements.createDbBtn.disabled = true;
-  setStatus('OrbitDB-Adresse wird erzeugt …');
-  setFeedback('Initiale OrbitDB wird erstellt …');
-
-  try {
-    await ensureOrbitRuntime();
-    const dbName = getDbName(teamName);
-    const db = await openEventsDb(dbName);
-    const address = String(db.address);
-
-    state.db = db;
-    state.pendingDbName = dbName;
-    state.pendingDbAddress = address;
-
-    elements.dbAddressInput.value = address;
-    elements.dbNameLabel.textContent = dbName;
-    elements.dbAddressLabel.textContent = address;
-    elements.peerIdLabel.textContent = state.ipfs.libp2p.peerId?.toString?.() || 'unbekannt';
-
-    attachDbUpdateListener(db);
-
-    setStatus('OrbitDB-Adresse erzeugt');
-    setFeedback('Die gemeinsame OrbitDB-Adresse wurde erzeugt und ins Feld eingetragen. Jetzt kannst du sie per Click2Copy kopieren.');
-  } catch (error) {
-    console.error(error);
-    setStatus('Fehler beim Erzeugen der OrbitDB', true);
-    setFeedback(error?.message || String(error), true);
-  } finally {
-    elements.createDbBtn.disabled = false;
-  }
-}
-
-async function copyDbAddress() {
-  const value = elements.dbAddressInput.value.trim();
-
-  if (!value) {
-    setFeedback('Es gibt noch keine OrbitDB-Adresse zum Kopieren.', true);
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(value);
-    setFeedback('OrbitDB-Adresse in die Zwischenablage kopiert.');
-  } catch (error) {
-    console.error(error);
-    setFeedback('Kopieren fehlgeschlagen. Bitte Adresse manuell markieren und kopieren.', true);
-  }
-}
-
-async function initOrbit() {
-  setStatus('Helia und OrbitDB werden initialisiert …');
-
-  await ensureOrbitRuntime();
-
-  const target = state.config.dbAddress?.trim() || getDbName(state.config.teamName);
-
-  if (state.db && String(state.db.address) === target) {
-    // Bereits geöffnet und passend.
-  } else {
-    state.db = await openEventsDb(target);
-    attachDbUpdateListener(state.db);
-  }
-
-  const peerId = state.ipfs.libp2p.peerId?.toString?.() || 'unbekannt';
-  elements.peerIdLabel.textContent = peerId;
-  elements.dbAddressLabel.textContent = String(state.db.address);
-  setStatus('Bereit');
-  elements.prDoneBtn.disabled = false;
-  elements.refreshBtn.disabled = false;
-
-  if (!state.config.dbAddress) {
-    state.config.dbAddress = String(state.db.address);
-    elements.dbAddressInput.value = state.config.dbAddress;
-    saveConfig(state.config);
-  }
-
-  await loadDbEvents();
+  const events = await window.prDoneOrbit.loadEvents();
+  state.events = events;
+  renderAll(events);
 }
 
 function showConfigForm(config = null) {
@@ -374,12 +227,40 @@ function showConfigForm(config = null) {
   if (config) {
     elements.teamName.value = config.teamName || '';
     elements.userShortcode.value = config.userShortcode || '';
-    elements.dbAddressInput.value = config.dbAddress || state.pendingDbAddress || '';
+    elements.dbAddressInput.value = config.dbAddress || '';
   }
 }
 
 function hideConfigForm() {
   elements.configCard.classList.add('hidden');
+}
+
+async function initOrbit() {
+  setStatus('Helia und OrbitDB werden initialisiert …');
+
+  const result = await window.prDoneOrbit.init({
+    config: state.config,
+    getDbName,
+    onStatus: setStatus,
+    onEventWritten: (message) => setFeedback(message),
+    onDbUpdated: async () => {
+      await loadDbEvents();
+    }
+  });
+
+  elements.peerIdLabel.textContent = result.peerId;
+  elements.dbAddressLabel.textContent = result.dbAddress;
+  setStatus('Bereit');
+  elements.prDoneBtn.disabled = false;
+  elements.refreshBtn.disabled = false;
+
+  if (!state.config.dbAddress) {
+    state.config.dbAddress = result.dbAddress;
+    elements.dbAddressInput.value = result.dbAddress;
+    saveConfig(state.config);
+  }
+
+  await loadDbEvents();
 }
 
 async function bootstrap() {
@@ -436,20 +317,73 @@ elements.configForm.addEventListener('submit', async (event) => {
 
 // Button „OrbitDB erzeugen“: neue DB anlegen und Adresse ins Feld schreiben
 elements.createDbBtn.addEventListener('click', async () => {
-  await createInitialDbAddress();
+  const teamName = elements.teamName.value.trim();
+
+  if (!teamName) {
+    setFeedback('Bitte zuerst einen Teamnamen eintragen, damit eine passende OrbitDB erzeugt werden kann.', true);
+    elements.teamName.focus();
+    return;
+  }
+
+  elements.createDbBtn.disabled = true;
+  setStatus('OrbitDB-Adresse wird erzeugt …');
+  setFeedback('Initiale OrbitDB wird erstellt …');
+
+  try {
+    const result = await window.prDoneOrbit.createInitialDbAddress({
+      teamName,
+      getDbName,
+      onStatus: setStatus
+    });
+
+    elements.dbAddressInput.value = result.dbAddress;
+    elements.dbNameLabel.textContent = result.dbName;
+    elements.dbAddressLabel.textContent = result.dbAddress;
+    elements.peerIdLabel.textContent = result.peerId;
+
+    setStatus('OrbitDB-Adresse erzeugt');
+    setFeedback('Die gemeinsame OrbitDB-Adresse wurde erzeugt und ins Feld eingetragen. Jetzt kannst du sie per Click2Copy kopieren.');
+  } catch (error) {
+    console.error(error);
+    setStatus('Fehler beim Erzeugen der OrbitDB', true);
+    setFeedback(error?.message || String(error), true);
+  } finally {
+    elements.createDbBtn.disabled = false;
+  }
 });
 
 // Button „Click2Copy“: DB-Adresse in die Zwischenablage kopieren
 elements.copyDbBtn.addEventListener('click', async () => {
-  await copyDbAddress();
+  const value = elements.dbAddressInput.value.trim();
+
+  if (!value) {
+    setFeedback('Es gibt noch keine OrbitDB-Adresse zum Kopieren.', true);
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(value);
+    setFeedback('OrbitDB-Adresse in die Zwischenablage kopiert.');
+  } catch (error) {
+    console.error(error);
+    setFeedback('Kopieren fehlgeschlagen. Bitte Adresse manuell markieren und kopieren.', true);
+  }
 });
 
 // Button „PR done“: neues Event in die geöffnete OrbitDB schreiben
 elements.prDoneBtn.addEventListener('click', async () => {
   elements.prDoneBtn.disabled = true;
   setFeedback('Event wird geschrieben …');
+
   try {
-    await addPrDoneEvent();
+    await window.prDoneOrbit.addPrDoneEvent({
+      teamName: state.config.teamName,
+      userShortcode: state.config.userShortcode,
+      dayKey: getTodayKey(),
+      timestamp: new Date().toISOString()
+    });
+
+    await loadDbEvents();
   } catch (error) {
     console.error(error);
     setFeedback(error?.message || String(error), true);
