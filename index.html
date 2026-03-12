@@ -40,8 +40,15 @@
         </label>
 
         <label>
-          Freiwillige DB-Adresse
-          <input id="dbAddressInput" name="dbAddressInput" type="text" placeholder="/orbitdb/... (optional, für gemeinsames Team-DB-Target)" />
+          Gemeinsame OrbitDB-Adresse
+          <div class="inline-input-actions">
+            <input id="dbAddressInput" name="dbAddressInput" type="text" placeholder="/orbitdb/..." />
+            <button id="createDbBtn" type="button" class="secondary">OrbitDB erzeugen</button>
+            <button id="copyDbBtn" type="button" class="secondary">Click2Copy</button>
+          </div>
+          <small class="field-hint">
+            Erzeuge hier einmal initial eine gemeinsame DB-Adresse und verteile sie an dein Team. Alternativ kannst du eine bestehende Adresse eintragen.
+          </small>
         </label>
 
         <div class="form-actions">
@@ -175,7 +182,7 @@
         <li>Die Konfiguration liegt im Local Storage des Browsers.</li>
         <li>Die App ist bewusst statisch gehalten und braucht für die Entwicklung kein Node.js.</li>
         <li>Für echte Team-Replikation im Browser ist in der Praxis meist ein stabiler Relay-/Bootstrap-Peer sinnvoll.</li>
-        <li>Die optionale DB-Adresse erlaubt es, mehrere Browser gezielt auf dieselbe bestehende OrbitDB zu richten.</li>
+        <li>Die gemeinsame DB-Adresse kann initial erzeugt, kopiert und dann an andere Team-Mitglieder verteilt werden.</li>
       </ul>
     </section>
   </main>

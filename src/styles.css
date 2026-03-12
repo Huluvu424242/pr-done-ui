@@ -172,3 +172,30 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+.inline-input-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+
+.inline-input-actions input {
+  margin-top: 0;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .inline-input-actions {
+    grid-template-columns: 1fr;
+  }
+}

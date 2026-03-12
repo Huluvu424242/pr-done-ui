@@ -85,3 +85,11 @@ Für ein echtes Team-Setup über mehrere Browser hinweg ist dieses Gerüst bewus
 ## Hinweis zur Architektur
 
 GitHub Pages ist nur das Hosting der statischen Oberfläche. Die eigentliche Datenhaltung geschieht im Browser mittels Helia + OrbitDB. Für echte Zusammenarbeit zwischen mehreren Clients ist meistens zusätzliche P2P-Infrastruktur nötig.
+
+
+## Neu in dieser Version
+
+- Button **„OrbitDB erzeugen“** im Konfigurationsbereich
+- erzeugte OrbitDB-Adresse wird direkt in das Adressfeld eingetragen
+- Button **„Click2Copy“** zum schnellen Kopieren der gemeinsamen DB-Adresse
+- dadurch kann ein Teammitglied die gemeinsame Adresse erzeugen und an alle anderen verteilen
