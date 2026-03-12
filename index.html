@@ -1,16 +1,188 @@
 <!doctype html>
 <html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PR Done · OrbitDB Demo</title>
-    <meta
-      name="description"
-      content="Kleines local-first Demo-Projekt für PR-Review-Events mit OrbitDB direkt im Browser."
-    />
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="./src/main.js"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PR Done – OrbitDB Browser Demo</title>
+  <meta name="description" content="Kleine statische Browser-App für PR-Review-Tracking mit OrbitDB, Helia und GitHub Pages." />
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <header class="shell-header">
+    <div>
+      <p class="eyebrow">OSS Demo · GitHub Pages · OrbitDB im Browser</p>
+      <h1>PR Done</h1>
+      <p class="lead">
+        Eine rein statische Demo-App, die PR-Review-Events lokal im Browser erfasst und in eine OrbitDB-Event-DB schreibt.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button id="resetConfigBtn" class="secondary">Konfiguration ändern</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section id="configCard" class="card config-card hidden">
+      <h2>Erstkonfiguration</h2>
+      <p>
+        Diese Angaben werden im Local Storage gespeichert und beim nächsten Laden automatisch wiederverwendet.
+      </p>
+
+      <form id="configForm" class="stack">
+        <label>
+          Teamname
+          <input id="teamName" name="teamName" type="text" maxlength="80" required placeholder="z. B. OSS-Team" />
+        </label>
+
+        <label>
+          Namenskürzel
+          <input id="userShortcode" name="userShortcode" type="text" maxlength="12" required placeholder="z. B. TS" />
+        </label>
+
+        <label>
+          Freiwillige DB-Adresse
+          <input id="dbAddressInput" name="dbAddressInput" type="text" placeholder="/orbitdb/... (optional, für gemeinsames Team-DB-Target)" />
+        </label>
+
+        <div class="form-actions">
+          <button type="submit">Speichern und starten</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card status-card">
+      <div class="status-grid">
+        <div>
+          <span class="label">Team</span>
+          <strong id="teamLabel">–</strong>
+        </div>
+        <div>
+          <span class="label">Kürzel</span>
+          <strong id="userLabel">–</strong>
+        </div>
+        <div>
+          <span class="label">DB-Name</span>
+          <strong id="dbNameLabel">–</strong>
+        </div>
+        <div>
+          <span class="label">Eigene Peer-ID</span>
+          <strong id="peerIdLabel">–</strong>
+        </div>
+        <div>
+          <span class="label">DB-Adresse</span>
+          <strong id="dbAddressLabel">–</strong>
+        </div>
+        <div>
+          <span class="label">Status</span>
+          <strong id="runtimeStatus">Initialisierung läuft …</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card action-card">
+      <div class="action-header">
+        <div>
+          <h2>Aktion</h2>
+          <p>Jeder Klick erzeugt ein neues Event in der OrbitDB.</p>
+        </div>
+        <button id="prDoneBtn" disabled>PR done</button>
+      </div>
+      <p id="actionFeedback" class="feedback">Noch kein Event geschrieben.</p>
+    </section>
+
+    <section class="stats-grid">
+      <article class="card stat-box">
+        <span class="label">Events gesamt</span>
+        <strong id="totalEventsStat">0</strong>
+      </article>
+      <article class="card stat-box">
+        <span class="label">Top Reviewer</span>
+        <strong id="topReviewerStat">–</strong>
+      </article>
+      <article class="card stat-box">
+        <span class="label">Stärkster Tag</span>
+        <strong id="topDayStat">–</strong>
+      </article>
+      <article class="card stat-box">
+        <span class="label">Heute von dir</span>
+        <strong id="myTodayStat">0</strong>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>PRs pro Tag</h2>
+          <p>Einfache Balkendarstellung auf Basis aller geladenen Events.</p>
+        </div>
+      </div>
+      <div id="chart" class="chart"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Rohdaten</h2>
+          <p>Alle Events aus der Event-DB, absteigend nach Zeit sortiert.</p>
+        </div>
+        <button id="refreshBtn" class="secondary" disabled>Neu laden</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Zeitpunkt</th>
+              <th>Tag</th>
+              <th>Kürzel</th>
+              <th>Team</th>
+              <th>Typ</th>
+              <th>Hash</th>
+            </tr>
+          </thead>
+          <tbody id="eventsTableBody">
+            <tr><td colspan="6" class="muted">Noch keine Daten vorhanden.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Aggregierte Auswertung</h2>
+          <p>Wie viele Reviews hat welcher Mitarbeiter an welchem Tag erzeugt?</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>Kürzel</th>
+              <th>Anzahl PR done</th>
+            </tr>
+          </thead>
+          <tbody id="dailySummaryBody">
+            <tr><td colspan="3" class="muted">Noch keine Daten vorhanden.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card notes">
+      <h2>Hinweise</h2>
+      <ul>
+        <li>Die Konfiguration liegt im Local Storage des Browsers.</li>
+        <li>Die App ist bewusst statisch gehalten und braucht für die Entwicklung kein Node.js.</li>
+        <li>Für echte Team-Replikation im Browser ist in der Praxis meist ein stabiler Relay-/Bootstrap-Peer sinnvoll.</li>
+        <li>Die optionale DB-Adresse erlaubt es, mehrere Browser gezielt auf dieselbe bestehende OrbitDB zu richten.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-gossipsub@11.1.0/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/helia@4.0.0/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@orbitdb/core@2.0.1/dist/orbitdb.min.js"></script>
+  <script type="module" src="src/app.js"></script>
+</body>
 </html>
