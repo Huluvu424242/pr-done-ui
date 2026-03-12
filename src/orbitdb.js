@@ -79,6 +79,20 @@ function mapEventRows(rows) {
     .filter((value) => value && value.type === 'pr_done');
 }
 
+async function closeCurrentDb() {
+  if (!orbitState.db) {
+    orbitState.dbUpdateListenerAttached = false;
+    return;
+  }
+
+  try {
+    await orbitState.db.close?.();
+  } catch {}
+
+  orbitState.db = null;
+  orbitState.dbUpdateListenerAttached = false;
+}
+
 async function init({ config, getDbName, onStatus, onDbUpdated }) {
   onStatus?.('Helia und OrbitDB werden initialisiert …');
 
@@ -101,13 +115,18 @@ async function createInitialDbAddress({ teamName, getDbName, onStatus }) {
 
   const dbName = getDbName(teamName);
   const db = await openEventsDb(dbName);
+  const dbAddress = String(db.address);
 
-  orbitState.db = db;
-  orbitState.dbUpdateListenerAttached = false;
+  try {
+    await db.close?.();
+  } catch {}
 
   return {
     dbName,
-    ...getDbDiagnostics()
+    dbAddress,
+    peerId: getPeerId(),
+    identityId: getIdentityId(),
+    writeAccess: ['wird erst nach dem Verbinden mit der gewählten DB ermittelt']
   };
 }
 
@@ -142,5 +161,6 @@ window.prDoneOrbit = {
   createInitialDbAddress,
   loadEvents,
   addPrDoneEvent,
-  getDbDiagnostics
+  getDbDiagnostics,
+  closeCurrentDb
 };

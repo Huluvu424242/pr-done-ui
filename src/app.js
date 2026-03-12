@@ -103,32 +103,7 @@ function renderConfig(config) {
 
 function renderConfigDiagnosticsFromConfig(config) {
   if (!config) return;
-
-  if (elements.dbAddressLabel) {
-    elements.dbAddressLabel.textContent = config.dbAddress || '–';
-  }
-  if (elements.debugDbAddressLabel) {
-    elements.debugDbAddressLabel.textContent = config.dbAddress || '–';
-  }
-
-  if (elements.peerIdLabel && !elements.peerIdLabel.textContent.trim()) {
-    elements.peerIdLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
-  if (elements.debugPeerIdLabel && !elements.debugPeerIdLabel.textContent.trim()) {
-    elements.debugPeerIdLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
-  if (elements.orbitIdentityLabel && !elements.orbitIdentityLabel.textContent.trim()) {
-    elements.orbitIdentityLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
-  if (elements.debugOrbitIdentityLabel && !elements.debugOrbitIdentityLabel.textContent.trim()) {
-    elements.debugOrbitIdentityLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
-  if (elements.writeAccessLabel && !elements.writeAccessLabel.textContent.trim()) {
-    elements.writeAccessLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
-  if (elements.debugWriteAccessLabel && !elements.debugWriteAccessLabel.textContent.trim()) {
-    elements.debugWriteAccessLabel.textContent = 'wird beim Verbinden ermittelt';
-  }
+  resetDiagnosticsForPendingConnection(config.dbAddress || '');
 }
 
 function renderDiagnostics(info) {
@@ -146,6 +121,34 @@ function renderDiagnostics(info) {
   if (elements.debugOrbitIdentityLabel) elements.debugOrbitIdentityLabel.textContent = identityId;
   if (elements.debugDbAddressLabel) elements.debugDbAddressLabel.textContent = dbAddress;
   if (elements.debugWriteAccessLabel) elements.debugWriteAccessLabel.textContent = writeAccess;
+}
+
+
+function resetDiagnosticsForPendingConnection(dbAddress = '') {
+  const addressText = dbAddress || '–';
+  if (elements.dbAddressLabel) elements.dbAddressLabel.textContent = addressText;
+  if (elements.debugDbAddressLabel) elements.debugDbAddressLabel.textContent = addressText;
+
+  const pending = 'wird beim Verbinden ermittelt';
+  if (elements.peerIdLabel) elements.peerIdLabel.textContent = pending;
+  if (elements.debugPeerIdLabel) elements.debugPeerIdLabel.textContent = pending;
+  if (elements.orbitIdentityLabel) elements.orbitIdentityLabel.textContent = pending;
+  if (elements.debugOrbitIdentityLabel) elements.debugOrbitIdentityLabel.textContent = pending;
+  if (elements.writeAccessLabel) elements.writeAccessLabel.textContent = pending;
+  if (elements.debugWriteAccessLabel) elements.debugWriteAccessLabel.textContent = pending;
+}
+
+function resetRenderedData() {
+  state.events = [];
+  renderAll([]);
+}
+
+async function prepareDbSwitch(dbAddress = '') {
+  elements.prDoneBtn.disabled = true;
+  elements.refreshBtn.disabled = true;
+  resetDiagnosticsForPendingConnection(dbAddress);
+  resetRenderedData();
+  await window.prDoneOrbit.closeCurrentDb?.();
 }
 
 function aggregateByDay(events) {
@@ -326,6 +329,7 @@ async function bootstrap() {
 
   renderConfig(state.config);
   renderConfigDiagnosticsFromConfig(state.config);
+  resetRenderedData();
   hideConfigForm();
 
   try {
@@ -356,7 +360,7 @@ elements.configForm.addEventListener('submit', async (event) => {
   state.config = config;
   saveConfig(config);
   renderConfig(config);
-  renderConfigDiagnosticsFromConfig(config);
+  await prepareDbSwitch(config.dbAddress || '');
   hideConfigForm();
 
   try {
@@ -392,13 +396,10 @@ elements.createDbBtn.addEventListener('click', async () => {
 
     elements.dbAddressInput.value = result.dbAddress;
     elements.dbNameLabel.textContent = result.dbName;
-    if (state.config) {
-      state.config.dbAddress = result.dbAddress;
-    }
-    renderDiagnostics(result);
+    resetDiagnosticsForPendingConnection(result.dbAddress);
 
-    setStatus('OrbitDB-Adresse erzeugt');
-    setFeedback('Die gemeinsame OrbitDB-Adresse wurde erzeugt und ins Feld eingetragen. Jetzt kannst du sie per Click2Copy kopieren.');
+    setStatus('OrbitDB-Adresse erzeugt, aber noch nicht verbunden');
+    setFeedback('Die gemeinsame OrbitDB-Adresse wurde erzeugt und ins Feld eingetragen. Verbunden wird erst nach „Speichern und starten“.');
   } catch (error) {
     console.error(error);
     setStatus('Fehler beim Erzeugen der OrbitDB', true);
