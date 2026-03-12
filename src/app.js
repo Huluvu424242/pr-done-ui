@@ -404,6 +404,7 @@ async function bootstrap() {
   }
 }
 
+// Konfigurationsformular: Werte übernehmen, lokal speichern und OrbitDB initialisieren
 elements.configForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -433,14 +434,17 @@ elements.configForm.addEventListener('submit', async (event) => {
   }
 });
 
+// Button „OrbitDB erzeugen“: neue DB anlegen und Adresse ins Feld schreiben
 elements.createDbBtn.addEventListener('click', async () => {
   await createInitialDbAddress();
 });
 
+// Button „Click2Copy“: DB-Adresse in die Zwischenablage kopieren
 elements.copyDbBtn.addEventListener('click', async () => {
   await copyDbAddress();
 });
 
+// Button „PR done“: neues Event in die geöffnete OrbitDB schreiben
 elements.prDoneBtn.addEventListener('click', async () => {
   elements.prDoneBtn.disabled = true;
   setFeedback('Event wird geschrieben …');
