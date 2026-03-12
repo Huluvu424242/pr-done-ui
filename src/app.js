@@ -25,6 +25,8 @@ const elements = {
   userLabel: $('#userLabel'),
   dbNameLabel: $('#dbNameLabel'),
   peerIdLabel: $('#peerIdLabel'),
+  orbitIdentityLabel: $('#orbitIdentityLabel'),
+  writeAccessLabel: $('#writeAccessLabel'),
   dbAddressLabel: $('#dbAddressLabel'),
   actionFeedback: $('#actionFeedback'),
   totalEventsStat: $('#totalEventsStat'),
@@ -93,6 +95,14 @@ function renderConfig(config) {
   elements.teamLabel.textContent = config.teamName;
   elements.userLabel.textContent = config.userShortcode;
   elements.dbNameLabel.textContent = dbName;
+}
+
+function renderDiagnostics(info) {
+  elements.peerIdLabel.textContent = info.peerId || 'unbekannt';
+  elements.orbitIdentityLabel.textContent = info.identityId || 'unbekannt';
+  elements.dbAddressLabel.textContent = info.dbAddress || 'unbekannt';
+  const writeAccess = Array.isArray(info.writeAccess) ? info.writeAccess.join(', ') : String(info.writeAccess || 'unbekannt');
+  elements.writeAccessLabel.textContent = writeAccess;
 }
 
 function aggregateByDay(events) {
@@ -248,8 +258,7 @@ async function initOrbit() {
     }
   });
 
-  elements.peerIdLabel.textContent = result.peerId;
-  elements.dbAddressLabel.textContent = result.dbAddress;
+  renderDiagnostics(result);
   setStatus('Bereit');
   elements.prDoneBtn.disabled = false;
   elements.refreshBtn.disabled = false;
@@ -338,8 +347,7 @@ elements.createDbBtn.addEventListener('click', async () => {
 
     elements.dbAddressInput.value = result.dbAddress;
     elements.dbNameLabel.textContent = result.dbName;
-    elements.dbAddressLabel.textContent = result.dbAddress;
-    elements.peerIdLabel.textContent = result.peerId;
+    renderDiagnostics(result);
 
     setStatus('OrbitDB-Adresse erzeugt');
     setFeedback('Die gemeinsame OrbitDB-Adresse wurde erzeugt und ins Feld eingetragen. Jetzt kannst du sie per Click2Copy kopieren.');
@@ -386,7 +394,13 @@ elements.prDoneBtn.addEventListener('click', async () => {
     await loadDbEvents();
   } catch (error) {
     console.error(error);
-    setFeedback(error?.message || String(error), true);
+    const message = error?.message || String(error);
+    const diagnostics = window.prDoneOrbit.getDbDiagnostics?.();
+    if (String(message).includes('not allowed to write to the log')) {
+      setFeedback(`Schreiben nicht erlaubt. Orbit-Identity: ${diagnostics?.identityId || 'unbekannt'} | Write-Access: ${Array.isArray(diagnostics?.writeAccess) ? diagnostics.writeAccess.join(', ') : 'unbekannt'}`, true);
+    } else {
+      setFeedback(message, true);
+    }
   } finally {
     elements.prDoneBtn.disabled = false;
   }
@@ -399,7 +413,13 @@ elements.refreshBtn.addEventListener('click', async () => {
     setFeedback('Daten neu geladen.');
   } catch (error) {
     console.error(error);
-    setFeedback(error?.message || String(error), true);
+    const message = error?.message || String(error);
+    const diagnostics = window.prDoneOrbit.getDbDiagnostics?.();
+    if (String(message).includes('not allowed to write to the log')) {
+      setFeedback(`Schreiben nicht erlaubt. Orbit-Identity: ${diagnostics?.identityId || 'unbekannt'} | Write-Access: ${Array.isArray(diagnostics?.writeAccess) ? diagnostics.writeAccess.join(', ') : 'unbekannt'}`, true);
+    } else {
+      setFeedback(message, true);
+    }
   } finally {
     elements.refreshBtn.disabled = false;
   }

@@ -9,6 +9,29 @@ function getPeerId() {
   return orbitState.ipfs?.libp2p?.peerId?.toString?.() || 'unbekannt';
 }
 
+function getIdentityId() {
+  return orbitState.orbitdb?.identity?.id || 'unbekannt';
+}
+
+function getWriteAccessList(db) {
+  try {
+    const write = db?.access?.write;
+    if (Array.isArray(write)) {
+      return write;
+    }
+  } catch {}
+  return ['unbekannt'];
+}
+
+function getDbDiagnostics() {
+  return {
+    peerId: getPeerId(),
+    identityId: getIdentityId(),
+    dbAddress: orbitState.db ? String(orbitState.db.address) : 'unbekannt',
+    writeAccess: orbitState.db ? getWriteAccessList(orbitState.db) : ['unbekannt']
+  };
+}
+
 async function ensureOrbitRuntime() {
   if (orbitState.ipfs && orbitState.orbitdb) {
     return;
@@ -56,7 +79,7 @@ function mapEventRows(rows) {
     .filter((value) => value && value.type === 'pr_done');
 }
 
-async function init({ config, getDbName, onStatus, onEventWritten, onDbUpdated }) {
+async function init({ config, getDbName, onStatus, onDbUpdated }) {
   onStatus?.('Helia und OrbitDB werden initialisiert …');
 
   await ensureOrbitRuntime();
@@ -69,10 +92,7 @@ async function init({ config, getDbName, onStatus, onEventWritten, onDbUpdated }
     attachDbUpdateListener(orbitState.db, onDbUpdated);
   }
 
-  return {
-    dbAddress: String(orbitState.db.address),
-    peerId: getPeerId()
-  };
+  return getDbDiagnostics();
 }
 
 async function createInitialDbAddress({ teamName, getDbName, onStatus }) {
@@ -87,8 +107,7 @@ async function createInitialDbAddress({ teamName, getDbName, onStatus }) {
 
   return {
     dbName,
-    dbAddress: String(db.address),
-    peerId: getPeerId()
+    ...getDbDiagnostics()
   };
 }
 
@@ -122,5 +141,6 @@ window.prDoneOrbit = {
   init,
   createInitialDbAddress,
   loadEvents,
-  addPrDoneEvent
+  addPrDoneEvent,
+  getDbDiagnostics
 };
