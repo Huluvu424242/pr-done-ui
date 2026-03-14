@@ -19,7 +19,10 @@
         const ipfs = await createHelia({ libp2p: libp2pOptions })
         const orbitdb = await createOrbitDB({ ipfs })
         const db = await orbitdb.open('browser')
-        console.log(db.address)
+        // const db = await orbitdb.open('browser', { type: 'events' })
+        console.log("DB Adresse: %s",db.address)
+        const hash = db.address.split("/").pop();
+        console.log("DB Manifest liegt unter: https://ipfs.io/ipfs/%s",hash)
         for (let i = 0; i <10 ; i++) {
             await db.add({
                 type: "PR_DONE",
