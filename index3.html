@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <div id="result">Loading...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-gossipsub@11.1.0/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/helia@4.0.0/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@orbitdb/core@2.0.1/dist/orbitdb.min.js"></script>
+
+    <script type="text/javascript">
+
+      const username = new Date().getTime()
+      const channel  = 'browser-eventlog-example'
+      const creatures = ['👻', '🐙', '🐷', '🐬', '🐞', '🐈', '🙉', '🐸', '🐓']
+
+      try {
+        const elm = document.getElementById("result")
+        const ipfs = IpfsApi('http://192.168.1.44', '5001')
+        const orbit = new OrbitDB(ipfs, username)
+        const log = orbit.eventlog(channel + ".log")
+
+        const query = () => {
+          const startTime = new Date().getTime()
+          const idx = Math.floor(Math.random() * creatures.length)
+
+          // Set a key-value pair
+          log.add(creatures[idx])
+            .then((hash) => {
+              console.log(`Added ${hash}`)
+              const latest = log.iterator({ limit: 5 }).collect()
+
+              let output = '<h1>Eventlog</h1>'
+              output += latest.reverse()
+                .map((e) => e.payload.value + "   at " + new Date(e.payload.meta.ts).toISOString())
+                .join('<br>\n')
+
+              elm.innerHTML = output.split("\n").join("<br>")
+            })
+            .catch((e) => {
+              elm.innerHTML = "<i>" + e.message + "</i><br><br>" + "Waiting for IPFS daemon to start..."
+              console.error(e.stack)
+            })
+        }
+        setInterval(query, 888)
+
+      } catch(e) {
+        console.error(e.stack)
+        elm.innerHTML = e.message
+      }
+
+    </script>
+  </body>
+</html>
