@@ -17,6 +17,7 @@
         libp2pOptions.services.pubsub = gossipsub()
 
         const ipfs = await createHelia({ libp2p: libp2pOptions })
+        // const ipfs = IpfsApi('http://192.168.1.44', '5001')
         const orbitdb = await createOrbitDB({ ipfs })
         const db = await orbitdb.open('browser')
         // const db = await orbitdb.open('browser', { type: 'events' })

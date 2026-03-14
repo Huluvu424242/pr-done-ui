@@ -1,0 +1,11 @@
+
+
+# Nutzbar um alle Transportmechanismen zu unterstützen - NICHT in PROD nehmen!
+import { all } from '@libp2p/websockets/filters'
+const ws = webSockets({ filter: all })
+
+
+
+Browser zu Browser geht nur per Relay weil Browser nicht auf eingehende Verbindungen lauschen können.
+Relay bauen:
+https://github.com/libp2p/js-libp2p-examples/tree/main/examples/js-libp2p-example-circuit-relay
